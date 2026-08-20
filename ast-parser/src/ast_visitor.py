@@ -12,7 +12,8 @@ class DependencyVisitor(ast.NodeVisitor):
         # Scope stack to track classes and nested functions/methods
         self.scope_stack = []
         # Current active function/method scope name (e.g. Class.method)
-        self.current_function = None
+        self.current_function = "<module>"
+        self.functions["<module>"] = []
 
     def visit_Import(self, node):
         for alias in node.names:
@@ -57,10 +58,9 @@ class DependencyVisitor(ast.NodeVisitor):
         self.visit_FunctionDef(node)
 
     def visit_Call(self, node):
-        if self.current_function is not None:
-            call_info = self._resolve_call_node(node.func)
-            if call_info:
-                self.functions[self.current_function].append(call_info)
+        call_info = self._resolve_call_node(node.func)
+        if call_info:
+            self.functions[self.current_function].append(call_info)
         self.generic_visit(node)
 
     def _resolve_call_node(self, node):
