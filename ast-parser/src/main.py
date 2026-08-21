@@ -38,13 +38,15 @@ def main():
     
     file_functions = {}
     file_imports = {}
+    file_function_ranges = {}
     
     for file_path in python_files:
         full_path = repo_root / file_path
         try:
-            funcs, imps = parse_file(full_path)
+            funcs, imps , ranges= parse_file(full_path)
             file_functions[file_path] = funcs
             file_imports[file_path] = imps
+            file_function_ranges[file_path] = ranges
         except SyntaxError as e:
             print(f"SyntaxError parsing {file_path}: {e}")
             continue
@@ -85,5 +87,16 @@ def main():
         
     print(f"Successfully generated dependency analysis. Saved output to {output_file}")
 
+    ranges_output = {}
+    for file_path, ranges in file_function_ranges.items():
+        for func_name, (start, end) in ranges.items():
+            key = f"{file_path}::{func_name}"
+            ranges_output[key] = [start, end]
+
+    ranges_file = output_dir / "function_ranges.json"
+    with open(ranges_file, 'w', encoding='utf-8') as f:
+        json.dump(ranges_output, f, indent=4)
+
+    print(f"Also saved function line ranges to {ranges_file}")
 if __name__ == "__main__":
     main()

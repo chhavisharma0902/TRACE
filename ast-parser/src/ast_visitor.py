@@ -7,6 +7,8 @@ class DependencyVisitor(ast.NodeVisitor):
     def __init__(self):
         # Maps function name (including class scope) -> list of CallNode target details
         self.functions = {}
+        # func_name -> (start_line, end_line)
+        self.function_ranges = {}
         # List of import statement details
         self.imports = []
         # Scope stack to track classes and nested functions/methods
@@ -48,6 +50,7 @@ class DependencyVisitor(ast.NodeVisitor):
         prev_func = self.current_function
         self.current_function = func_name
         self.functions[func_name] = []
+        self.function_ranges[func_name] = (node.lineno, node.end_lineno)
         
         self.generic_visit(node)
         
@@ -103,4 +106,4 @@ def parse_file(file_path):
     tree = ast.parse(content, filename=str(file_path))
     visitor = DependencyVisitor()
     visitor.visit(tree)
-    return visitor.functions, visitor.imports
+    return visitor.functions, visitor.imports , visitor.function_ranges
