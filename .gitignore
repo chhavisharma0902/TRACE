@@ -219,3 +219,5 @@ __marimo__/
 
 ast-parser/output/
 ast-parser/*.html
+git-miner/*.html
+git-miner/output/
