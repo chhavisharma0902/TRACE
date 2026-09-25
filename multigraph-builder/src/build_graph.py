@@ -58,9 +58,11 @@ def build_unified_graph(ast_data: dict, cochange_data: dict) -> nx.MultiDiGraph:
     cochange_edges_added = 0
     for source, targets in cochange_data.items():
         G.add_node(source)
-        for target, count in targets.items():
+        for target, info in targets.items():
             G.add_node(target)
-            G.add_edge(source, target, edge_type="cochange", count=count)
+            count = info.get("count", 0) if isinstance(info, dict) else info
+            last_date = info.get("last_date") if isinstance(info, dict) else None
+            G.add_edge(source, target, edge_type="cochange", count=count, last_date=last_date)
             cochange_edges_added += 1
 
     print(f"Call edges added:      {call_edges_added}")

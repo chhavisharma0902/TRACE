@@ -4,40 +4,22 @@ from pathlib import Path
 sys.path.insert(0, "src")
 sys.path.insert(0, "../multigraph-builder/src")
 from build_graph import load_graph
-from ground_truth import load_ground_truth
-from scoring import score_neighbors
+from ground_truth import load_ground_truth, split_by_date
+from optimize import hit_rate_at_k
 
 G = load_graph(Path("../multigraph-builder/output/unified_graph.json"))
 pairs = load_ground_truth(Path("data/ground_truth.json"))
+_, test_pairs = split_by_date(pairs, "2023-01-01")
 
-tied_at_top = 0
-clearly_separated = 0
-examples_shown = 0
+# Try several very different weight combos directly on the TEST set
+combos = [
+    (0.9, 0.1, 30),
+    (0.1, 0.9, 30),
+    (0.5, 0.5, 1000),
+    (0.9, 0.1, 1000),
+    (0.1, 0.9, 1000),
+]
 
-for pair in pairs:
-    changed = pair["changed_function"]
-    affected = pair["affected_function"]
-    if changed not in G:
-        continue
-    neighbors = set(t for _, t, _ in G.out_edges(changed, data=True))
-    if affected not in neighbors:
-        continue
-
-    scores = score_neighbors(G, changed, call_weight=0.5, cochange_weight=0.5)
-    if affected not in scores:
-        continue
-
-    affected_score = scores[affected]
-    tied_with = sum(1 for s in scores.values() if s == affected_score)
-
-    if tied_with > 5:
-        tied_at_top += 1
-        if examples_shown < 3:
-            print(f"Example: {changed} -> {affected}")
-            print(f"  affected_function score: {affected_score:.4f}, tied with {tied_with} other neighbors")
-            examples_shown += 1
-    else:
-        clearly_separated += 1
-
-print(f"\nPairs where target is tied with 5+ other neighbors at the same score: {tied_at_top}")
-print(f"Pairs where target has a distinct, separable score: {clearly_separated}")
+for call_w, cochange_w, halflife in combos:
+    score = hit_rate_at_k(G, test_pairs, call_w, cochange_w, halflife, k=5)
+    print(f"call={call_w}, cochange={cochange_w}, halflife={halflife} -> hit-rate={score:.4f}")

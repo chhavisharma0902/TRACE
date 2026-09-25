@@ -229,6 +229,11 @@ def get_python_commits():
     output = run_git(["log", "--format=%H", "--", "*.py"])
     return [c.strip() for c in output.splitlines() if c.strip()]
 
+def get_commit_date(commit_hash):
+    """Returns the commit's date as YYYY-MM-DD."""
+    output = run_git(["show", "-s", "--format=%ad", "--date=short", commit_hash])
+    return output.strip()
+
 
 def get_commits_to_process(all_commits, last_commit):
     if not last_commit:
@@ -311,15 +316,15 @@ def resolve_changed_lines_to_functions(changed_lines):
 # CO-CHANGE COUNTING
 # ==================================================
 
-def add_cochange_pairs(co_change, functions_in_commit):
+def add_cochange_pairs(co_change, functions_in_commit, commit_date):
     functions_in_commit = sorted(set(functions_in_commit))
 
     for function1, function2 in combinations(functions_in_commit, 2):
-        co_change.setdefault(function1, {})
-        co_change[function1][function2] = co_change[function1].get(function2, 0) + 1
-
-        co_change.setdefault(function2, {})
-        co_change[function2][function1] = co_change[function2].get(function1, 0) + 1
+        for a, b in [(function1, function2), (function2, function1)]:
+            entry = co_change.setdefault(a, {}).setdefault(b, {"count": 0, "last_date": None})
+            entry["count"] += 1
+            if entry["last_date"] is None or commit_date > entry["last_date"]:
+                entry["last_date"] = commit_date
 
 
 # ==================================================
@@ -395,7 +400,8 @@ def main():
         if len(functions_in_commit) < 2:
             continue
 
-        add_cochange_pairs(co_change, functions_in_commit)
+        commit_date = get_commit_date(commit)
+        add_cochange_pairs(co_change, functions_in_commit, commit_date)
 
     cache = {
         "repository": os.path.abspath(REPO_PATH),

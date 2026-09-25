@@ -25,7 +25,7 @@ from ground_truth import load_ground_truth, split_by_date
 from build_graph import load_graph
 
 
-def hit_rate_at_k(G, ground_truth_pairs, call_weight, cochange_weight, k=5):
+def hit_rate_at_k(G, ground_truth_pairs, call_weight, cochange_weight, recency_halflife_days=365.0, k=5):
     """
     For each (changed_function, affected_function) pair in ground_truth_pairs,
     checks whether affected_function appears in the top-k recommendations
@@ -42,12 +42,18 @@ def hit_rate_at_k(G, ground_truth_pairs, call_weight, cochange_weight, k=5):
     for pair in ground_truth_pairs:
         changed = pair["changed_function"]
         affected = pair["affected_function"]
+        reference_date = pair.get("date")
 
         if changed not in G:
-            continue  # function no longer exists / wasn't parsed — skip, don't penalize
+            continue
 
         evaluated += 1
-        recommendations = top_k_recommendations(G, changed, call_weight, cochange_weight, k=k)
+        recommendations = top_k_recommendations(
+            G, changed, call_weight, cochange_weight,
+            recency_halflife_days=recency_halflife_days,
+            reference_date=reference_date,
+            k=k,
+        )
         recommended_ids = {func_id for func_id, _score in recommendations}
 
         if affected in recommended_ids:
@@ -68,8 +74,9 @@ def make_objective(G, train_pairs, k=5):
     def objective(trial):
         call_weight = trial.suggest_float("call_weight", 0.0, 1.0)
         cochange_weight = trial.suggest_float("cochange_weight", 0.0, 1.0)
+        recency_halflife_days = trial.suggest_float("recency_halflife_days", 7.0, 1825.0, log=True)
 
-        return hit_rate_at_k(G, train_pairs, call_weight, cochange_weight, k=k)
+        return hit_rate_at_k(G, train_pairs, call_weight, cochange_weight, recency_halflife_days, k=k)
 
     return objective
 
@@ -87,7 +94,7 @@ def evaluate_baseline(G, test_pairs, k=5):
     comparison against the Optuna-tuned result — this is what
     demonstrates the optimization is actually adding value.
     """
-    return hit_rate_at_k(G, test_pairs, call_weight=0.5, cochange_weight=0.5, k=k)
+    return hit_rate_at_k(G, test_pairs, call_weight=0.5, cochange_weight=0.5, recency_halflife_days=1e9, k=k)
 
 
 def main():
@@ -148,6 +155,7 @@ def main():
         G, test_pairs,
         call_weight=best_weights["call_weight"],
         cochange_weight=best_weights["cochange_weight"],
+        recency_halflife_days=best_weights["recency_halflife_days"],
         k=args.k,
     )
     baseline_test_score = evaluate_baseline(G, test_pairs, k=args.k)
