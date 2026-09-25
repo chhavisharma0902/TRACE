@@ -1,0 +1,11 @@
+{
+  "best_weights": {
+    "call_weight": 0.3496182914951398,
+    "cochange_weight": 0.2540538653024552
+  },
+  "train_hit_rate": 0.116600790513834,
+  "test_hit_rate_tuned": 0.10240963855421686,
+  "test_hit_rate_baseline": 0.10240963855421686,
+  "n_trials": 100,
+  "k": 5
+}
