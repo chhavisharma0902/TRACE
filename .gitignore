@@ -221,3 +221,7 @@ ast-parser/output/
 ast-parser/*.html
 git-miner/*.html
 git-miner/output/
+
+multigraph-builder/output/
+graph-optimizer/output/
+graph-optimizer/data/
