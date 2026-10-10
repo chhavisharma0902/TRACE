@@ -1,17 +1,21 @@
-import json
-from pathlib import Path
-from fastapi import APIRouter, HTTPException
-from src.graph_state import graph_state
+from typing import Optional
+
+from fastapi import APIRouter, Query
+
+from src.routes.common import require_engine, resolve_target
 
 router = APIRouter()
 
-MOCK_DATA_PATH = Path(__file__).resolve().parents[2] / "mock_data" / "mock_recommendations.json"
-
-with open(MOCK_DATA_PATH, "r", encoding="utf-8") as f:
-    _mock_data = json.load(f)
-
 
 @router.get("/api/recommend")
-def get_recommendations(file_path: str, top_n: int = 5):
-    recommendations = graph_state.get_recommendations(file_path, top_n=top_n)
-    return {"file_path": file_path, "recommendations": recommendations}
+def recommend(
+    function_id: Optional[str] = Query(None, description="e.g. src/app.py::Flask.run"),
+    file_path: Optional[str] = Query(None, description="Workspace-relative path; use with line"),
+    line: Optional[int] = Query(None, ge=1, description="1-based cursor line; use with file_path"),
+    k: int = Query(5, ge=1, le=50),
+):
+    engine = require_engine()
+    target = resolve_target(function_id, file_path, line)
+    if target is None:  # cursor is outside any function
+        return {"function_id": None, "recommendations": []}
+    return {"function_id": target, "recommendations": engine.get_recommendations(target, k=k)}

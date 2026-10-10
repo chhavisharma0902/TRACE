@@ -1,10 +1,14 @@
 {
-  "src/auth.py": [
-    { "file_path": "src/models.py", "score": 0.87 },
-    { "file_path": "src/routes/login.py", "score": 0.64 },
-    { "file_path": "src/utils/hashing.py", "score": 0.41 }
+  "src/auth.py::login": [
+    {"function_id": "src/models.py::User.check_password", "score": 0.87, "via_call": true, "via_cochange": true},
+    {"function_id": "src/routes/session.py::create_session", "score": 0.64, "via_call": true, "via_cochange": false},
+    {"function_id": "src/utils/hashing.py::hash_password", "score": 0.41, "via_call": false, "via_cochange": true}
   ],
-  "src/utils/hashing.py": [
-    { "file_path": "src/auth.py", "score": 0.41 }
+  "src/models.py::User.check_password": [
+    {"function_id": "src/auth.py::login", "score": 0.52, "via_call": false, "via_cochange": true},
+    {"function_id": "src/utils/hashing.py::hash_password", "score": 0.48, "via_call": true, "via_cochange": false}
+  ],
+  "src/utils/hashing.py::hash_password": [
+    {"function_id": "src/models.py::User.check_password", "score": 0.33, "via_call": false, "via_cochange": true}
   ]
 }
