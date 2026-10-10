@@ -1,0 +1,10 @@
+{
+  "src/auth.py": [
+    { "file_path": "src/models.py", "score": 0.87 },
+    { "file_path": "src/routes/login.py", "score": 0.64 },
+    { "file_path": "src/utils/hashing.py", "score": 0.41 }
+  ],
+  "src/utils/hashing.py": [
+    { "file_path": "src/auth.py", "score": 0.41 }
+  ]
+}
