@@ -10,10 +10,11 @@ from bisect import bisect_right
 # SETTINGS
 # ==================================================
 
+import hashlib
+
 MAX_FILES_PER_COMMIT = 15
 MAX_FUNCTIONS_PER_COMMIT = 100
 
-CACHE_FILE_NAME = "cochange_cache.json"
 OUTPUT_FILE_NAME = "cochange.json"
 
 
@@ -42,7 +43,13 @@ OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, OUTPUT_FILE_NAME)
-CACHE_FILE = os.path.join(OUTPUT_DIR, CACHE_FILE_NAME)
+
+# Cache file is keyed per-repo (by a short hash of the repo's absolute
+# path), so switching between multiple repos never overwrites another
+# repo's incremental-mining progress — each repo gets its own cache
+# file sitting side by side in the same output/ directory.
+_repo_key = hashlib.sha256(os.path.abspath(REPO_PATH).encode("utf-8")).hexdigest()[:16]
+CACHE_FILE = os.path.join(OUTPUT_DIR, f"cochange_cache_{_repo_key}.json")
 
 
 # ==================================================
