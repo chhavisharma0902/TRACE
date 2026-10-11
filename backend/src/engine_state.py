@@ -92,9 +92,17 @@ class EngineState:
             self.resolver_error = f"missing file: {config.FUNCTION_RANGES_FILE}"
             return
         try:
-            self.resolver = FunctionResolver(config.FUNCTION_RANGES_FILE)
+            self.resolver = FunctionResolver(config.FUNCTION_RANGES_FILE, module_files=self._module_files())
         except Exception as exc:
             self.resolver_error = f"{type(exc).__name__}: {exc}"
+
+    def _module_files(self) -> set:
+        """Files that have a '<module>' node in the graph (lines outside any function map there)."""
+        graph = getattr(self.engine, "G", None)
+        if graph is None:
+            return set()
+        suffix = "::<module>"
+        return {n[: -len(suffix)] for n in graph.nodes if isinstance(n, str) and n.endswith(suffix)}
 
     def _node_count(self) -> Optional[int]:
         engine = self.engine

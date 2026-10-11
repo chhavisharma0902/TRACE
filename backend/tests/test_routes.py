@@ -39,7 +39,7 @@ class FakeEngine:
 @pytest.fixture(autouse=True)
 def injected_state(tmp_path):
     ranges = tmp_path / "ranges.json"
-    ranges.write_text(json.dumps({"src/auth.py": {"login": [10, 30]}}), encoding="utf-8")
+    ranges.write_text(json.dumps({"src/auth.py::login": [10, 30]}), encoding="utf-8")
 
     saved = (engine_state.engine, engine_state.resolver, engine_state.mode, engine_state.error)
     engine_state.engine = FakeEngine()
@@ -86,6 +86,16 @@ def test_recommend_line_outside_any_function_returns_empty_list():
     assert r.json() == {"function_id": None, "recommendations": []}
 
 
+def test_recommend_line_outside_function_uses_module_node_when_graph_has_one(tmp_path):
+    ranges = tmp_path / "r2.json"
+    ranges.write_text(json.dumps({"src/auth.py::login": [10, 30]}), encoding="utf-8")
+    engine_state.resolver = FunctionResolver(ranges, module_files={"src/auth.py"})
+    r = client.get("/api/recommend", params={"file_path": "src/auth.py", "line": 1})
+    assert r.status_code == 200
+    assert r.json()["function_id"] == "src/auth.py::<module>"
+    assert r.json()["recommendations"] == []  # FakeEngine knows no <module> node
+
+
 def test_recommend_respects_k():
     r = client.get("/api/recommend", params={"function_id": "src/auth.py::login", "k": 1})
     assert len(r.json()["recommendations"]) == 1
@@ -125,7 +135,10 @@ def test_ego_graph_returns_nodes_and_edges():
 def test_ego_graph_unknown_function_still_has_center_key():
     r = client.get("/api/ego-graph", params={"function_id": "src/nope.py::x"})
     assert r.status_code == 200
-    assert r.json() == {"center": "src/nope.py::x", "nodes": [], "edges": []}
+    assert r.json() == {
+        "center": "src/nope.py::x", "nodes": [], "edges": [],
+        "truncated": False, "total_nodes": 0, "total_edges": 0,
+    }
 
 
 def test_ego_graph_by_file_and_line():
@@ -133,9 +146,46 @@ def test_ego_graph_by_file_and_line():
     assert r.json()["center"] == "src/auth.py::login"
 
 
-def test_ego_graph_radius_is_capped():
-    r = client.get("/api/ego-graph", params={"function_id": "src/auth.py::login", "radius": 9})
-    assert r.status_code == 422
+def test_ego_graph_radius_is_capped_at_2():
+    for radius in (3, 9):
+        r = client.get("/api/ego-graph", params={"function_id": "src/auth.py::login", "radius": radius})
+        assert r.status_code == 422
+
+
+def _big_ego_engine():
+    """Center 'c' linked to 40 co-change neighbors (n0 weakest ... n39 strongest) and one call neighbor."""
+    class Big(FakeEngine):
+        def get_ego_graph_data(self, function_id, radius=2, reference_date=None):
+            nodes = ["c", "caller"] + [f"n{i}" for i in range(40)]
+            edges = [{"source": "c", "target": "caller", "edge_type": "call", "count": None}]
+            edges += [{"source": "c", "target": f"n{i}", "edge_type": "cochange", "count": i + 1} for i in range(40)]
+            edges.append({"source": "n0", "target": "n1", "edge_type": "cochange", "count": 1})  # between two weak nodes
+            return {"center": "c", "nodes": nodes, "edges": edges}
+    return Big()
+
+
+def test_ego_graph_is_trimmed_to_max_nodes_keeping_strongest():
+    engine_state.engine = _big_ego_engine()
+    body = client.get("/api/ego-graph", params={"function_id": "c", "max_nodes": 5}).json()
+    assert len(body["nodes"]) == 5 and body["nodes"][0] == "c"
+    assert set(body["nodes"]) == {"c", "caller", "n39", "n38", "n37"}  # call link first, then highest counts
+    assert all(e["source"] in body["nodes"] and e["target"] in body["nodes"] for e in body["edges"])
+    assert len(body["edges"]) == 4  # only center-incident edges survive; the n0-n1 edge is dropped
+    assert body["truncated"] is True and body["total_nodes"] == 42 and body["total_edges"] == 42
+
+
+def test_ego_graph_default_limit_and_no_truncation_when_small():
+    engine_state.engine = _big_ego_engine()
+    assert len(client.get("/api/ego-graph", params={"function_id": "c"}).json()["nodes"]) == 25
+    engine_state.engine = FakeEngine()
+    small = client.get("/api/ego-graph", params={"function_id": "src/auth.py::login"}).json()
+    assert small["truncated"] is False and small["total_nodes"] == 2
+
+
+def test_ego_graph_max_nodes_bounds_are_validated():
+    for bad in (1, 101):
+        r = client.get("/api/ego-graph", params={"function_id": "src/auth.py::login", "max_nodes": bad})
+        assert r.status_code == 422
 
 
 # ---------- /api/suggest-fix ----------

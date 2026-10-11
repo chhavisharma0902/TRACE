@@ -52,7 +52,7 @@ IDs look like `src/app.py::Flask.run`. `recommend` and `ego-graph` accept **eith
 | Method | Route | Notes |
 |---|---|---|
 | GET | `/api/recommend?function_id=...&k=5` | `{function_id, recommendations: [{function_id, score, via_call, via_cochange}]}` |
-| GET | `/api/ego-graph?function_id=...&radius=1` | `{center, nodes, edges: [{source, target, edge_type, count}]}`, radius 1-3 |
+| GET | `/api/ego-graph?function_id=...&radius=1&max_nodes=25` | `{center, nodes, edges: [{source, target, edge_type, count}], truncated, total_nodes, total_edges}`. Radius 1-2; trimmed to the strongest `max_nodes` (the raw graph can be several MB) |
 | POST | `/api/suggest-fix` | body `{function_id, diff, function_source?}` returns `{suggestion, auto_apply: false, ...}` |
 
 Errors: `400` missing target, `422` bad parameter, `429` rate limited (see `Retry-After`),
