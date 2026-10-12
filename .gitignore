@@ -225,3 +225,4 @@ git-miner/output/
 multigraph-builder/output/
 graph-optimizer/output/
 graph-optimizer/data/
+graph-optimizer/src/output

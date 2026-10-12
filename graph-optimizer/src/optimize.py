@@ -17,8 +17,12 @@ from pathlib import Path
 
 import optuna
 
-sys.path.insert(0, str(Path(__file__).parent))
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "multigraph-builder" / "src"))
+current_dir = Path(__file__).parent.resolve()
+sys.path.insert(0, str(current_dir))
+
+# TRACE folder ka absolute root base nikalne ke liye
+trace_root = current_dir.parent.parent.resolve()
+sys.path.insert(0, str(trace_root / "multigraph-builder" / "src"))
 
 from scoring import top_k_recommendations
 from ground_truth import load_ground_truth, split_by_date
@@ -72,8 +76,8 @@ def make_objective(G, train_pairs, k=5):
     """
 
     def objective(trial):
-        call_weight = trial.suggest_float("call_weight", 0.0, 1.0)
-        cochange_weight = trial.suggest_float("cochange_weight", 0.0, 1.0)
+        call_weight = trial.suggest_float("call_weight", 0.0, 10.0)
+        cochange_weight = trial.suggest_float("cochange_weight", 0.0, 10.0)
         recency_halflife_days = trial.suggest_float("recency_halflife_days", 7.0, 1825.0, log=True)
 
         return hit_rate_at_k(G, train_pairs, call_weight, cochange_weight, recency_halflife_days, k=k)
@@ -104,12 +108,12 @@ def main():
     parser.add_argument(
         "--graph-file",
         type=Path,
-        default=Path("../multigraph-builder/output/unified_graph.json"),
+        default=trace_root / "multigraph-builder" / "output" / "unified_graph.json",
     )
     parser.add_argument(
         "--ground-truth-file",
         type=Path,
-        default=Path("data/ground_truth_example.json"),
+        default=current_dir.parent / "data" / "ground_truth.json",
     )
     parser.add_argument(
         "--split-date",
@@ -123,7 +127,7 @@ def main():
     parser.add_argument(
         "--output-file",
         type=Path,
-        default=Path("output/best_weights.json"),
+        default=current_dir.parent / "output" / "best_weights.json",
     )
     args = parser.parse_args()
 
