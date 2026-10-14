@@ -1,0 +1,103 @@
+{
+  "name": "trace-vscode",
+  "displayName": "Trace",
+  "description": "Traversal-based Risk Analysis via Co-change Estimation: shows which functions are likely affected by your change.",
+  "version": "0.0.1",
+  "publisher": "trace-team",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:python",
+    "workspaceContains:**/*.py"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "trace",
+          "title": "Trace",
+          "icon": "media/trace.svg"
+        }
+      ]
+    },
+    "views": {
+      "trace": [
+        {
+          "type": "webview",
+          "id": "trace.sidebar",
+          "name": "Impact"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "trace.refresh",
+        "title": "Trace: Refresh Recommendations"
+      },
+      {
+        "command": "trace.checkBackend",
+        "title": "Trace: Check Backend Connection"
+      }
+    ],
+    "configuration": {
+      "title": "Trace",
+      "properties": {
+        "trace.backendUrl": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "Base URL of the Trace FastAPI backend."
+        },
+        "trace.debounceMs": {
+          "type": "number",
+          "default": 700,
+          "minimum": 300,
+          "maximum": 3000,
+          "description": "Wait this long after the last save or editor switch before calling the backend."
+        },
+        "trace.requestTimeoutMs": {
+          "type": "number",
+          "default": 5000,
+          "description": "Give up on a backend request after this many milliseconds."
+        },
+        "trace.mockFunctionId": {
+          "type": "string",
+          "default": "",
+          "description": "Dev only: when set (e.g. src/auth.py::login), always query this function id. Useful with TRACE_USE_MOCK=1 when function_ranges.json is not available."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "test": "npm run compile && node --test",
+    "vendor": "node -e \"require('fs').copyFileSync('node_modules/vis-network/standalone/umd/vis-network.min.js','media/vendor/vis-network.min.js')\"",
+    "package": "npx @vscode/vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.3",
+    "vis-network": "^9.1.13"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Suggest fix runs git, so it is disabled until you trust this workspace. Everything else works."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Trace needs real files on disk and a local git repository."
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chhavisharma0902/TRACE"
+  }
+}
